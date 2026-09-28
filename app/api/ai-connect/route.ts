@@ -1,5 +1,7 @@
 import {authorized,configured,equal,session,sameOrigin} from '@/lib/ai-auth';
-import {credentials,providerError} from '@/lib/ai-credentials';
+import {credentials} from '@/lib/ai-credentials';
+import {requestAI,AIServiceError} from '@/lib/ai-provider-request';
+import {providers} from '@/lib/ai-providers';
 export const runtime='nodejs';
 export const maxDuration=30;
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
@@ -17,11 +19,9 @@ export async function POST(request:Request){
  if(!active)return json({error:'API 키와 모델 입력값을 확인하거나 서버 키 잠금을 해제해 주세요.'},401);
  if(body.action!=='test')return json({error:'올바르지 않은 요청입니다.'},400);
  try{
-  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${active.key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),body:JSON.stringify({model:active.model,input:'Reply with OK.',max_output_tokens:64,store:false})});
-  if(!response.ok)return json({error:await providerError(response)},502);
-  const data=await response.json();const text=data.output?.flatMap((o:any)=>o.content||[]).filter((c:any)=>c.type==='output_text').map((c:any)=>c.text).join('');if(data.status!=='completed'||!text?.trim())return json({error:'응답이 완료되지 않았습니다. 기본 모델로 다시 테스트해 주세요.'},502);
-  return json({message:'OpenAI 실제 응답 확인 완료! 이제 요일별 문제를 만들 수 있어요.'});
- }catch{return json({error:'연결 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'},502)}
+  await requestAI(active,{instructions:'You are a connection test assistant.',input:'Reply with OK.',test:true});
+  return json({message:providers[active.provider].name+' 실제 응답 확인 완료! 이제 요일별 문제를 만들 수 있어요.'});
+ }catch(error){return json({error:error instanceof AIServiceError?error.message:'연결 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'},502)}
 }
 export async function DELETE(request:Request){if(!sameOrigin(request))return json({error:'잘못된 요청입니다.'},403);const response=json({message:'AI 출제를 잠갔습니다.'});response.headers.set('Set-Cookie','haru_ai=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return response}
 

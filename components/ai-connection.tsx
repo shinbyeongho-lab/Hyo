@@ -1,19 +1,23 @@
 "use client";
 import {useEffect,useState} from 'react';
 import {Sparkles,KeyRound,CheckCircle2} from 'lucide-react';
-import {aiFetch,directModel,setDirectConnection} from '@/lib/ai-client';
+import {aiFetch,directModel,directProvider,setDirectConnection} from '@/lib/ai-client';
 
-type Status={configured:boolean;unlocked:boolean;mode:'direct'|'server'|null;model:string;message:string};
+import {providers,validKey,validModel,type Provider} from '@/lib/ai-providers';
+
+type Status={provider:Provider;configured:boolean;unlocked:boolean;mode:'direct'|'server'|null;model:string;message:string};
 export function AIConnection({onGenerate,busy}:{onGenerate:()=>void;busy:boolean}){
+ const [provider,setProvider]=useState<Provider>(()=>directProvider());
+ const selected=providers[provider];
  const [status,setStatus]=useState<Status|null>(null);
  const [checking,setChecking]=useState(false),[message,setMessage]=useState(''),[success,setSuccess]=useState(false);
  const [key,setKey]=useState(''),[model,setModel]=useState(()=>directModel()||'gpt-4o-mini'),[password,setPassword]=useState('');
  async function refresh(){try{const r=await aiFetch('/api/ai-status');if(!r.ok)throw Error();setStatus(await r.json())}catch{setSuccess(false);setMessage('서버 연결 상태를 확인하지 못했습니다.')}}
  useEffect(()=>{void refresh()},[]);
  async function connect(){
-  const candidate={key:key.trim(),model:model.trim()};
-  if(!/^sk-[A-Za-z0-9_-]{16,500}$/.test(candidate.key)){setSuccess(false);setMessage('sk-로 시작하는 OpenAI API 키 전체를 입력해 주세요.');return}
-  if(!/^gpt-[A-Za-z0-9._-]{1,90}$/.test(candidate.model)){setSuccess(false);setMessage('올바른 GPT 모델 이름을 입력해 주세요.');return}
+  const candidate={key:key.trim(),model:model.trim(),provider};
+  if(!validKey(provider,candidate.key)){setSuccess(false);setMessage(selected.name+' API 키 전체를 입력해 주세요.');return}
+  if(!validModel(provider,candidate.model)){setSuccess(false);setMessage(selected.name+'에 맞는 모델 이름을 입력해 주세요.');return}
   setChecking(true);setSuccess(false);setMessage('입력한 키로 실제 AI 응답을 확인하고 있어요…');
   try{
    const r=await aiFetch('/api/ai-connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'test'})},candidate);
@@ -31,16 +35,16 @@ export function AIConnection({onGenerate,busy}:{onGenerate:()=>void;busy:boolean
  }
  const disabled=checking||busy;
  return <section className="info ai-connection"><span className="pill">보호자 설정</span><h2>AI와 연결하기</h2><p>API 키를 입력하고 테스트하면 바로 맞춤 문제를 만들 수 있어요.</p>
-  <div className="connection-card">{status?.unlocked?<CheckCircle2 size={28}/>:<Sparkles size={28}/>}<div><h3>{status?.unlocked?'AI 출제 준비 완료':'API 키를 연결해 주세요'}</h3><p>{status?.message||'설정 확인 중…'}</p><small>OpenAI · {status?.model||'gpt-4o-mini'}{status?.mode==='direct'?' · 직접 입력한 키':status?.mode==='server'?' · 서버 키':''}</small></div></div>
+  <div className="connection-card">{status?.unlocked?<CheckCircle2 size={28}/>:<Sparkles size={28}/>}<div><h3>{status?.unlocked?'AI 출제 준비 완료':'API 키를 연결해 주세요'}</h3><p>{status?.message||'설정 확인 중…'}</p><small>{status?.unlocked?providers[status.provider].name:selected.name} · {status?.unlocked?status.model:model}{status?.mode==='direct'?' · 직접 입력한 키':status?.mode==='server'?' · 서버 키':''}</small></div></div>
   <form className="ai-key-form" onSubmit={e=>{e.preventDefault();void connect()}}>
    <h3><KeyRound size={20}/> API 키 직접 입력</h3>
-   <label htmlFor="openai-key">OpenAI API 키</label>
-   <input id="openai-key" type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="sk-…" autoComplete="off" spellCheck={false} autoCapitalize="none" maxLength={510} required disabled={disabled} aria-describedby="key-help"/>
+   <fieldset className="provider-picker" disabled={disabled}><legend>AI 서비스 선택</legend><div>{(Object.keys(providers) as Provider[]).map(id=><button type="button" key={id} aria-pressed={provider===id} onClick={()=>{setProvider(id);setModel(providers[id].model);setKey('');setMessage('');setSuccess(false)}}>{providers[id].name}<small>{id==='openai'?'오픈AI':id==='gemini'?'구글 제미나이':'xAI 그록'}</small></button>)}</div></fieldset><label htmlFor="openai-key">{selected.name} API 키</label>
+   <input id="openai-key" type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder={selected.placeholder} autoComplete="off" spellCheck={false} autoCapitalize="none" maxLength={510} required disabled={disabled} aria-describedby="key-help"/>
    <label htmlFor="openai-model">사용할 모델</label>
-   <input id="openai-model" value={model} onChange={e=>setModel(e.target.value)} placeholder="gpt-4o-mini" spellCheck={false} autoCapitalize="none" maxLength={95} required disabled={disabled}/>
-   <p id="key-help">키는 현재 탭의 메모리에만 유지됩니다. 새로고침하거나 탭을 닫으면 다시 입력해 주세요. 입력한 키는 이 사이트 서버를 통해 OpenAI 호출에만 사용하며 서버에 저장하지 않습니다.</p>
-   <div className="connection-actions"><button className="primary" disabled={disabled||!key.trim()}>{checking?'연결 확인 중…':'연결 테스트 후 적용'}</button><a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">API 키 발급 페이지 ↗</a></div>
-   <p className="ai-cost">테스트와 문제 생성에는 OpenAI API 사용료가 발생합니다. ChatGPT 구독과 API 결제는 별개입니다.</p>
+   <input id="openai-model" value={model} onChange={e=>setModel(e.target.value)} placeholder={selected.model} spellCheck={false} autoCapitalize="none" maxLength={95} required disabled={disabled}/>
+   <p id="key-help">키는 현재 탭의 메모리에만 유지됩니다. 새로고침하거나 탭을 닫으면 다시 입력해 주세요. 입력한 키는 이 사이트 서버를 통해 선택한 AI 서비스 호출에만 사용하며 서버에 저장하지 않습니다.</p>
+   <div className="connection-actions"><button className="primary" disabled={disabled||!key.trim()}>{checking?'연결 확인 중…':'연결 테스트 후 적용'}</button><a href={selected.keyUrl} target="_blank" rel="noreferrer">API 키 발급 페이지 ↗</a></div>
+   <p className="ai-cost">테스트와 문제 생성은 선택한 서비스의 API 한도를 사용하며 요금이 발생할 수 있습니다. 일반 챗봇 구독과 API 결제는 별개입니다.</p>
   </form>
   {message&&<p role="status" aria-live="polite" className={`notice ${success?'ai-success':''}`}>{message}</p>}
   <div className="connection-actions"><button className="secondary" disabled={disabled} onClick={()=>void refresh()}>상태 새로 확인</button>{status?.unlocked&&<><button className="secondary" disabled={disabled} onClick={()=>void action('test')}>다시 연결 테스트</button><button className="secondary" disabled={disabled} onClick={()=>void action('lock')}>연결 해제</button></>}<button className="primary" disabled={!status?.unlocked||disabled} onClick={onGenerate}>{busy?'출제 중…':'선택 요일 AI 문제 만들기'}</button></div>

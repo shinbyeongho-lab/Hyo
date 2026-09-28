@@ -10,6 +10,6 @@ call npx --yes vercel@latest --prod
 if errorlevel 1 (
   echo Deployment failed. Review the message above and try again.
 ) else (
-  echo Open the AI connection tab on your site and enter your OpenAI API key.
+  echo Open the AI connection tab on your site and select OpenAI, Gemini or Grok, then enter your API key.
 )
 pause
