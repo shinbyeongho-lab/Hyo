@@ -92,3 +92,9 @@ http://localhost:3000 에서 확인합니다. 배포 빌드는 `npm run build`, 
 - 인쇄물에는 학습 목표, 읽기 자료, 선택지, 생각 쓰기 칸, 자기 점검, 별도 정답·해설을 포함합니다.
 
 검증: 기본 학년·과목·문제 수·주제·요일 조합 1,456세트, 주 경계, 기존 기록 이전, 답·생각 쓰기 보존을 확인했습니다. 실제 AI 문항의 품질은 본인의 API 키로 생성한 후 검토해야 합니다.
+
+## 배포 오류 수정본 (2026-09-29)
+
+`page.tsx`에서 `level` 또는 `onRefresh` 오류가 나면 이전 페이지 파일과 새 소스가 섞였을 수 있습니다. TypeScript 검사 범위를 실제 app/components/lib 소스와 Next 설정으로 한정하여 최상위에 남은 사용하지 않는 예전 page.tsx를 검사하지 않도록 수정했습니다. 타입 검사는 계속 활성화됩니다.
+
+최신 `haru-vercel-workbook-fix.zip`은 압축 최상위에 package.json, app, components, lib가 바로 들어 있습니다. ZIP을 새 폴더에 풀고 전체 내용을 배포 프로젝트에 반영하세요. 파일 일부만 교체하지 마세요. app/page.tsx가 실제 최신 페이지입니다. Vercel 프로젝트 루트에는 package.json과 app 폴더가 함께 있어야 합니다.
