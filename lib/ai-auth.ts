@@ -1,6 +1,6 @@
 import {createHmac, timingSafeEqual} from 'node:crypto';
-export const configured=()=>!!process.env.OPENAI_API_KEY && (process.env.AI_ACCESS_PASSWORD?.length||0)>=12;
-const sign=(value:string)=>createHmac('sha256',process.env.OPENAI_API_KEY+'|'+process.env.AI_ACCESS_PASSWORD).update(value).digest('hex');
+export const configured=()=>!!process.env.GEMINI_API_KEY && (process.env.AI_ACCESS_PASSWORD?.length||0)>=12;
+const sign=(value:string)=>createHmac('sha256',process.env.GEMINI_API_KEY+'|'+process.env.AI_ACCESS_PASSWORD).update(value).digest('hex');
 export function equal(a:string,b:string){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y)}
 export function session(){const expires=String(Date.now()+8*60*60*1000);return expires+'.'+sign(expires)}
 export function authorized(request:Request){

@@ -4,7 +4,7 @@ import {isProvider,providers,validKey,validModel} from './ai-providers';
 export function credentials(request:Request){
  const supplied=request.headers.get('x-haru-api-key');
  if(supplied!==null){
-  const provider=request.headers.get('x-haru-provider')||'openai';
+  const provider=request.headers.get('x-haru-provider')||'gemini';
   if(!isProvider(provider))return null;
   const key=supplied.trim(), model=request.headers.get('x-haru-model')?.trim()||providers[provider].model;
   // A malformed supplied key must never fall back to the site's paid key.
@@ -12,7 +12,7 @@ export function credentials(request:Request){
   return {key,model,provider,mode:'direct' as const};
  }
  if(!authorized(request))return null;
- return {key:process.env.OPENAI_API_KEY!,model:process.env.OPENAI_MODEL||'gpt-4o-mini',provider:'openai' as const,mode:'server' as const};
+ return {key:process.env.GEMINI_API_KEY!,model:process.env.GEMINI_MODEL||'gemini-3.8-flash',provider:'gemini' as const,mode:'server' as const};
 }
 
 export async function providerError(response:Response){
