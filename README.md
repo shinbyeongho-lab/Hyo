@@ -4,12 +4,15 @@
 2. package.json과 app 폴더가 있는 위치를 Vercel 프로젝트 루트로 지정합니다.
 3. 사이트의 AI 연결 탭에서 Gemini API 키를 입력하고 연결 테스트 후 적용을 누릅니다.
 
-Gemini 기본 모델: gemini-3.8-flash. AQ. 인증 키와 기존 키 형식을 지원합니다.
+Gemini 기본 모델: gemini-2.5-flash. AQ. 인증 키와 기존 키 형식을 지원합니다. 선택 모델이 일시적 과부하(503)를 반환하면 안정 모델로 한 번 자동 재시도합니다.
+연결 화면에서 Gemini 2.5 Flash, Gemini Flash Latest, Gemini 3.8 Flash 중 기본 모델을 선택할 수 있으며 선택값은 브라우저에 저장됩니다. API 키는 저장하지 않습니다.
 키 발급: https://aistudio.google.com/api-keys
 직접 입력한 키는 현재 탭 메모리에만 유지되며 새로고침하면 다시 입력해야 합니다.
 테스트와 출제에 API 비용이 발생할 수 있습니다. 키는 소스에 넣지 마세요.
 
 선택적으로 Vercel 환경 변수 GEMINI_API_KEY, GEMINI_MODEL, AI_ACCESS_PASSWORD(12자 이상)를 설정해 보호자 비밀번호로 서버 키를 사용할 수 있습니다. .env.example은 예시 파일입니다.
+
+2026-09-29 연결 점검: Google의 Gemini 네이티브 `generateContent` API와 `x-goog-api-key` 인증으로 변경했습니다. 제공된 키는 모델 목록 조회와 `gemini-2.5-flash` 응답에 성공했습니다. 당시 `gemini-3.8-flash`는 Google 측 과부하(503)를 반환했습니다.
 
 ## 주간 워크북 업데이트
 

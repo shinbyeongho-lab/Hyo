@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {Sparkles,KeyRound,CheckCircle2} from 'lucide-react';
 import {aiFetch,directModel,setDirectConnection} from '@/lib/ai-client';
 
-import {providers,validKey,validModel,type Provider} from '@/lib/ai-providers';
+import {geminiModels,providers,validKey,validModel,type Provider} from '@/lib/ai-providers';
 
 type Status={provider:Provider;configured:boolean;unlocked:boolean;mode:'direct'|'server'|null;model:string;message:string};
 export function AIConnection({onGenerate,busy}:{onGenerate:()=>void;busy:boolean}){
@@ -13,7 +13,7 @@ export function AIConnection({onGenerate,busy}:{onGenerate:()=>void;busy:boolean
  const [checking,setChecking]=useState(false),[message,setMessage]=useState(''),[success,setSuccess]=useState(false);
  const [key,setKey]=useState(''),[model,setModel]=useState(()=>directModel()||providers.gemini.model),[password,setPassword]=useState('');
  async function refresh(){try{const r=await aiFetch('/api/ai-status');if(!r.ok)throw Error();setStatus(await r.json())}catch{setSuccess(false);setMessage('서버 연결 상태를 확인하지 못했습니다.')}}
- useEffect(()=>{void refresh()},[]);
+ useEffect(()=>{void refresh();const saved=localStorage.getItem('haru-gemini-model');if(saved&&validModel('gemini',saved))setModel(saved)},[]);
  async function connect(){
   const candidate={key:key.trim(),model:model.trim(),provider};
   if(!validKey(provider,candidate.key)){setSuccess(false);setMessage(selected.name+' API 키 전체를 입력해 주세요.');return}
@@ -40,8 +40,11 @@ export function AIConnection({onGenerate,busy}:{onGenerate:()=>void;busy:boolean
    <h3><KeyRound size={20}/> API 키 직접 입력</h3>
    <label htmlFor="gemini-key">{selected.name} API 키</label>
    <input id="gemini-key" type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder={selected.placeholder} autoComplete="off" spellCheck={false} autoCapitalize="none" maxLength={510} required disabled={disabled} aria-describedby="key-help"/>
-   <label htmlFor="gemini-model">사용할 모델</label>
-   <input id="gemini-model" value={model} onChange={e=>setModel(e.target.value)} placeholder={selected.model} spellCheck={false} autoCapitalize="none" maxLength={95} required disabled={disabled}/>
+   <label htmlFor="gemini-model">사용할 기본 모델</label>
+   <select id="gemini-model" value={model} onChange={e=>{setModel(e.target.value);localStorage.setItem('haru-gemini-model',e.target.value);setMessage('');setSuccess(false)}} required disabled={disabled}>
+    {geminiModels.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+   </select>
+   <p className="model-help">선택한 모델은 이 브라우저에 기억됩니다. 고성능 모델이 혼잡하면 안정 모델로 한 번 자동 재시도합니다.</p>
    <p id="key-help">키는 현재 탭의 메모리에만 유지됩니다. 새로고침하거나 탭을 닫으면 다시 입력해 주세요. 입력한 키는 이 사이트 서버를 통해 Gemini 호출에만 사용하며 서버에 저장하지 않습니다.</p>
    <div className="connection-actions"><button className="primary" disabled={disabled||!key.trim()}>{checking?'연결 확인 중…':'연결 테스트 후 적용'}</button><a href={selected.keyUrl} target="_blank" rel="noreferrer">API 키 발급 페이지 ↗</a></div>
    <p className="ai-cost">테스트와 문제 생성은 Gemini API 한도를 사용하며 요금이 발생할 수 있습니다. 일반 챗봇 구독과 API 결제는 별개입니다.</p>
