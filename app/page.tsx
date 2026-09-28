@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from 'react';
+import {aiFetch} from '@/lib/ai-client';
 import {BookOpen,ArrowUpRight,ArrowRight,Printer,Sparkles,Check,SlidersHorizontal,Sun,Calculator,Languages,FlaskConical,Globe,Leaf,ChevronLeft,ChevronRight,RotateCcw,CheckCircle2} from 'lucide-react';
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/ui/select';
 import {Tabs,TabsList,TabsTrigger} from '@/components/ui/tabs';
@@ -32,7 +33,7 @@ export default function Home(){
     const key=recordKey(base,week,targetDay),existing=weekly.records[key];
     if(existing&&(Object.keys(existing.answers).length>0||existing.source.startsWith('AI'))){skipped++;continue;}
     setNotice(weekdays[targetDay]+'요일 문제를 만들고 있어요. '+(all?'('+String(made+1)+'/7)':''));
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,day:targetDay,week,exclude:excluded.filter(x=>x.length<=3000).slice(-140).reduceRight((a:string[],x:string)=>a.join('').length+x.length<=20000?[x,...a]:a,[])}),signal:AbortSignal.timeout(90000)});
+    const r=await aiFetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,day:targetDay,week,exclude:excluded.filter(x=>x.length<=3000).slice(-140).reduceRight((a:string[],x:string)=>a.join('').length+x.length<=20000?[x,...a]:a,[])}),signal:AbortSignal.timeout(90000)});
     const data:any=await r.json();if(!r.ok)throw new Error(data.error||'문제를 만들지 못했습니다. 다시 시도해 주세요.');
     weekly.put(key,data.questions,'AI 생성 · 공개 자료 참고',data.sources);excluded.push(...data.questions.map((q:Question)=>q.prompt+' '+q.passage));made++;
    }

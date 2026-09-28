@@ -1,3 +1,4 @@
 import {authorized,configured} from '@/lib/ai-auth';
+import {credentials} from '@/lib/ai-credentials';
 export const runtime='nodejs';
-export async function GET(request:Request){return Response.json({configured:configured(),unlocked:authorized(request),model:process.env.OPENAI_MODEL||'gpt-4o-mini',message:configured()?'서버 설정 완료 · 잠금 해제 후 실제 연결을 테스트하세요.':'Vercel 환경 변수에 OPENAI_API_KEY와 12자 이상의 AI_ACCESS_PASSWORD를 설정하고 재배포하세요.'},{headers:{'Cache-Control':'no-store'}})}
+export async function GET(request:Request){const active=credentials(request);return Response.json({configured:configured(),unlocked:!!active,mode:active?.mode||null,model:active?.model||process.env.OPENAI_MODEL||'gpt-4o-mini',message:active?.mode==='direct'?'직접 입력한 키가 이 탭에 적용되어 있습니다.':authorized(request)?'서버 키 잠금이 해제되어 있습니다.':'아래에서 API 키를 입력하고 연결 테스트 후 적용하세요. 환경 변수 설정 없이 사용할 수 있습니다.'},{headers:{'Cache-Control':'no-store'}})}

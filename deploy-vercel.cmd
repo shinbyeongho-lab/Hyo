@@ -10,6 +10,6 @@ call npx --yes vercel@latest --prod
 if errorlevel 1 (
   echo Deployment failed. Review the message above and try again.
 ) else (
-  echo Set OPENAI_API_KEY and AI_ACCESS_PASSWORD in Vercel, then Redeploy.
+  echo Open the AI connection tab on your site and enter your OpenAI API key.
 )
 pause
