@@ -1,0 +1,27 @@
+import {authorized,configured,equal,session,sameOrigin} from '@/lib/ai-auth';
+import {credentials,providerError} from '@/lib/ai-credentials';
+export const runtime='nodejs';
+export const maxDuration=30;
+const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
+export async function POST(request:Request){
+ if(!sameOrigin(request))return json({error:'사이트 안에서 요청해 주세요.'},403);
+ let body;try{const raw=await request.text();if(raw.length>2048)return json({error:'요청이 너무 큽니다.'},413);body=JSON.parse(raw)}catch{return json({error:'입력값을 확인해 주세요.'},400)}
+ if(!body||typeof body!=='object')return json({error:'입력값을 확인해 주세요.'},400);
+ if(body.action==='unlock'){
+  if(!configured())return json({error:'서버 키가 설정되지 않았습니다. API 키 직접 입력을 이용해 주세요.'},503);
+  if(typeof body.password!=='string'||!equal(body.password,process.env.AI_ACCESS_PASSWORD!))return json({error:'보호자 비밀번호가 일치하지 않습니다.'},401);
+  const response=json({message:'8시간 동안 이 브라우저에서 AI 출제를 사용할 수 있습니다.'});
+  response.headers.set('Set-Cookie',`haru_ai=${session()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${new URL(request.url).protocol==='https:'?'; Secure':''}`);return response;
+ }
+ const active=credentials(request);
+ if(!active)return json({error:'API 키와 모델 입력값을 확인하거나 서버 키 잠금을 해제해 주세요.'},401);
+ if(body.action!=='test')return json({error:'올바르지 않은 요청입니다.'},400);
+ try{
+  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${active.key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),body:JSON.stringify({model:active.model,input:'Reply with OK.',max_output_tokens:64,store:false})});
+  if(!response.ok)return json({error:await providerError(response)},502);
+  const data=await response.json();const text=data.output?.flatMap((o:any)=>o.content||[]).filter((c:any)=>c.type==='output_text').map((c:any)=>c.text).join('');if(data.status!=='completed'||!text?.trim())return json({error:'응답이 완료되지 않았습니다. 기본 모델로 다시 테스트해 주세요.'},502);
+  return json({message:'OpenAI 실제 응답 확인 완료! 이제 요일별 문제를 만들 수 있어요.'});
+ }catch{return json({error:'연결 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'},502)}
+}
+export async function DELETE(request:Request){if(!sameOrigin(request))return json({error:'잘못된 요청입니다.'},403);const response=json({message:'AI 출제를 잠갔습니다.'});response.headers.set('Set-Cookie','haru_ai=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return response}
+
