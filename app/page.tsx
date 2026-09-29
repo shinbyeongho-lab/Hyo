@@ -13,7 +13,7 @@ import {Worksheet} from '@/components/worksheet';
 import {worksheetPlan,skills,subjectGuidance} from '@/lib/worksheet';
 import {WeekPlanner,SourcesPanel,AIConnection} from '@/components/learning-panels';
 import {LearningDashboard,ProfileGate} from '@/components/profile-gate';
-import {settingsStorage,type LearnerProfile} from '@/lib/profiles';
+import {settingsStorage,updateProfile,type LearnerProfile,type ProfileTheme} from '@/lib/profiles';
 const icons:Record<string,typeof BookOpen>={수학:Calculator,국어:BookOpen,영어:Languages,사회:Globe,과학:FlaskConical,통합:Leaf};
 
 const defaults:Settings={grade:3,subject:'수학',count:10,topic:0};
@@ -27,9 +27,10 @@ export default function Home(){
  const setIndex=(next:any)=>weekly.update({index:typeof next==='function'?next(index):next});
  const setDone=(done:boolean)=>weekly.update({done});
  useEffect(()=>{setToday(new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Seoul'}))},[]);
- useEffect(()=>{setReady(false);if(!profile)return;try{const p=JSON.parse(localStorage.getItem(settingsStorage(profile.id))||'null');if(p&&Number.isInteger(p.grade)&&p.grade>=1&&p.grade<=6&&[5,10,15,20].includes(p.count)&&subjects(p.grade).includes(p.subject))setS({grade:p.grade,subject:p.subject,count:p.count,topic:0});else setS(defaults)}catch{setS(defaults)}setView('today');setNotice('');setReady(true)},[profile]);
+ useEffect(()=>{setReady(false);if(!profile)return;setTheme(profile.theme);try{const p=JSON.parse(localStorage.getItem(settingsStorage(profile.id))||'null');if(p&&[5,10,15,20].includes(p.count)&&subjects(profile.grade).includes(p.subject))setS({grade:profile.grade,subject:p.subject,count:p.count,topic:0});else setS({...defaults,grade:profile.grade,subject:subjects(profile.grade)[0]})}catch{setS({...defaults,grade:profile.grade,subject:subjects(profile.grade)[0]})}setView('today');setNotice('');setReady(true)},[profile,setTheme]);
  useEffect(()=>{if(ready&&profile)try{localStorage.setItem(settingsStorage(profile.id),JSON.stringify(s))}catch{}},[s,ready,profile]);
- const change=(patch:Partial<Settings>)=>{if(busy)return;setS(v=>({...v,...patch}));setView('today');setNotice('')};
+ const change=(patch:Partial<Settings>)=>{if(busy)return;if(profile&&patch.grade&&patch.grade!==profile.grade){const next={...profile,grade:patch.grade};setProfile(next);updateProfile(next)}setS(v=>({...v,...patch}));setView('today');setNotice('')};
+ const changeTheme=(next:ProfileTheme)=>{setTheme(next);if(profile&&profile.theme!==next){const updated={...profile,theme:next};setProfile(updated);updateProfile(updated)}};
  function start(){weekly.ensure();setView('study')}
  async function ai(all=false,refresh=false){
   if(busy||!weekly.week)return;setBusy(true);setNotice('');const base={...s},week=weekly.week,day=weekly.day;
@@ -54,7 +55,7 @@ export default function Home(){
  return <div className="app"><header className="top"><a href="/" className="brand"><span className="brand-mark"><BookOpen size={23}/></span>하루한뼘<span className="brand-small">매일, 스스로 자라는 공부</span></a><button className="parent" onClick={()=>{setView('today');setTimeout(()=>document.getElementById('settings')?.scrollIntoView({behavior:'smooth'}),50)}}><SlidersHorizontal size={17}/>학습 설정</button><button className="avatar avatar-button" onClick={()=>setProfile(null)} aria-label="사용자 변경">{profile.name.slice(0,1)}</button></header>
  <div className="page"><div className="eyebrow"><span>MY LITTLE STUDY ROOM</span><span>{today}</span></div><div className="heading"><div><h1>오늘도 한 뼘, 자라볼까?</h1><p>작은 공부가 모여, 큰 자신감이 돼요.</p></div><span className="grade-tag">초등 {s.grade}학년 <Sun size={19}/></span></div>
  <LearningDashboard profile={profile} summary={summary} onSwitch={()=>setProfile(null)}/>
- <ThemePicker theme={theme} onChange={setTheme}/>
+ <ThemePicker theme={theme} onChange={changeTheme}/>
  <Tabs value={view==='study'||view==='print'?'today':view} onValueChange={setView}><TabsList className="navtabs"><TabsTrigger value="today">오늘의 학습</TabsTrigger><TabsTrigger value="curriculum">학년별 교육과정</TabsTrigger><TabsTrigger value="sources">학습 자료</TabsTrigger><TabsTrigger value="connection">AI 연결</TabsTrigger><TabsTrigger value="guide">이용 안내</TabsTrigger></TabsList></Tabs>
  {view==='today'&&<WeekPlanner week={weekly.week} day={weekly.day} settings={s} records={weekly.records} busy={busy} onDay={d=>{weekly.setDay(d);setNotice('')}} onWeek={w=>{weekly.setWeek(w);setNotice('')}} onPrepare={()=>{weekly.prepareWeek();setNotice('월요일부터 일요일까지 기본 문제를 준비했습니다.')}} onAI={()=>ai(true)} onRefresh={()=>ai(true,true)}/>}
  {weekly.storageError&&<p className="notice" role="alert">{weekly.storageError}</p>}

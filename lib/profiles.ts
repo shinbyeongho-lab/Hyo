@@ -1,15 +1,17 @@
 import type {DailyRecord} from './weekly';
 
-export type LearnerProfile={id:string;name:string;createdAt:string};
+export type ProfileTheme='forest'|'ocean'|'space';
+export type LearnerProfile={id:string;name:string;grade:number;theme:ProfileTheme;createdAt:string};
 export type LearningSummary={points:number;sessions:number;answered:number;correct:number;accuracy:number;level:number;nextLevel:number};
 export const PROFILE_STORAGE='haru-profiles-v1';
 export const recordStorage=(profileId:string)=>`haru-weekly-v2:${profileId}`;
 export const settingsStorage=(profileId:string)=>`haru-settings-v2:${profileId}`;
 export const progressStorage=(profileId:string)=>`haru-progress-v1:${profileId}`;
 
-export function readProfiles():LearnerProfile[]{try{const value=JSON.parse(localStorage.getItem(PROFILE_STORAGE)||'[]');return Array.isArray(value)?value.filter(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&typeof p.createdAt==='string').slice(0,8):[]}catch{return []}}
+export function readProfiles():LearnerProfile[]{try{const value=JSON.parse(localStorage.getItem(PROFILE_STORAGE)||'[]');return Array.isArray(value)?value.filter(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&typeof p.createdAt==='string').slice(0,8).map((p,i)=>({...p,grade:Number.isInteger(p.grade)&&p.grade>=1&&p.grade<=6?p.grade:3,theme:['forest','ocean','space'].includes(p.theme)?p.theme:['forest','ocean','space'][i%3] as ProfileTheme})):[]}catch{return []}}
 export function saveProfiles(profiles:LearnerProfile[]){localStorage.setItem(PROFILE_STORAGE,JSON.stringify(profiles.slice(0,8)))}
-export function createProfile(name:string):LearnerProfile{return {id:crypto.randomUUID(),name:name.trim().replace(/\s+/g,' ').slice(0,12),createdAt:new Date().toISOString()}}
+export function createProfile(name:string,grade:number,theme:ProfileTheme):LearnerProfile{return {id:crypto.randomUUID(),name:name.trim().replace(/\s+/g,' ').slice(0,12),grade,theme,createdAt:new Date().toISOString()}}
+export function updateProfile(profile:LearnerProfile){const profiles=readProfiles(),index=profiles.findIndex(item=>item.id===profile.id);if(index<0)return;profiles[index]=profile;saveProfiles(profiles)}
 export function pointsFor(answered:number,correct:number){return answered*2+correct*8+10}
 function finishSummary(points:number,sessions:number,answered:number,correct:number):LearningSummary{const level=Math.floor(points/500)+1;return {points,sessions,answered,correct,accuracy:answered?Math.round(correct/answered*100):0,level,nextLevel:level*500}}
 export function learningSummary(records:Record<string,DailyRecord>):LearningSummary{
